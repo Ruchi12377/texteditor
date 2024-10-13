@@ -7,6 +7,10 @@
 #include <termios.h>
 #include <unistd.h>
 
+/*** defines ***/
+
+#define CTRL_KEY(k) ((k) & 0x1f)
+
 /*** data ***/
 
 struct termios orig_termios;
@@ -24,18 +28,20 @@ void disableRawMode() {
 }
 
 void enableRawMode() {
-    if (tcgetattr(STDIN_FILENO, &orig_termios) -1) die("tcgetattr");
+    if (tcgetattr(STDIN_FILENO, &orig_termios) == -1) die("tcgetattr");
     // プログラムの終了時に関数を呼び出す
     atexit(disableRawMode);
 
     struct termios raw = orig_termios;
-    // ローカルフラグをオフにする
+    // インプットフラグ
     // ICRNL Ctrl-Mを無効にする (carriage retrun new line)
     // IXION Ctrl-SとCtrl-Qを無効にする
-    raw.c_lflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
+    raw.c_iflag &= ~(ICRNL | IXON);
+    // アウトプットフラグ
     // OPOST 出力後の後処理(\nから\r\nへの変換)をオフにする
-    raw.c_lflag &= ~(OPOST);
-    raw.c_lflag |= (CS8);
+    raw.c_oflag &= ~(OPOST);
+    // データビット数を8にする
+    raw.c_cflag |= (CS8);
     // ECHO 表示をオフにする
     // ICANON カノニカルモードをオフにする
     // IEXTEN Ctrl-Vを無効にする、MacでCtrl-Oを無効にする
@@ -62,7 +68,7 @@ int main() {
             // 97 ('a')
             printf("%d ('%c')\r\n", c, c);
         }
-        if (c == 'q') break;
+        if (c == CTRL_KEY('q')) break;
     }
     return 0;
 }
